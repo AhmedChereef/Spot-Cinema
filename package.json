@@ -1,0 +1,28 @@
+{
+  "name": "elcinema-unofficial-api",
+  "version": "0.3.0",
+  "description": "A daily snapshot and cautious wrapper API for public elCinema movie showtimes.",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "snapshot": "node scripts/build-snapshot.js",
+    "test": "node --test test/parsers.test.js",
+    "test:live": "node test/live.test.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "elcinema",
+    "cinema",
+    "showtimes",
+    "egypt"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "cheerio": "^1.2.0",
+    "express": "^5.2.1"
+  }
+}

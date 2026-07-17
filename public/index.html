@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="قارن مواعيد وأسعار السينمات القريبة بسرعة." />
+    <title>Cinema Finder</title>
+    <style>
+      :root { color-scheme: dark; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+      * { box-sizing: border-box; }
+      body { margin: 0; background: #090b10; color: #f7f7f8; }
+      main { width: min(1100px, 92%); margin: 40px auto; }
+      h1 { margin: 0 0 8px; font-size: clamp(30px, 5vw, 48px); }
+      h2, h3 { margin-top: 0; }
+      .muted { color: #a9afbd; }
+      .status { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 14px; }
+      .badge { padding: 6px 10px; border-radius: 999px; background: #17271f; color: #74e7ad; font-size: 13px; }
+      .panel { padding: 22px; margin-top: 24px; background: #141820; border: 1px solid #252b38; border-radius: 18px; }
+      .form { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr auto; gap: 12px; align-items: end; }
+      label { display: grid; gap: 7px; font-size: 14px; color: #c7cbd4; }
+      select, button { width: 100%; min-height: 46px; padding: 10px 12px; border-radius: 10px; border: 1px solid #333b4c; background: #0d1016; color: white; font: inherit; }
+      button { width: auto; padding-inline: 24px; cursor: pointer; background: #e31b45; border-color: #e31b45; font-weight: 700; }
+      button.secondary { min-height: auto; padding: 6px 12px; background: transparent; border-color: #3a4355; font-size: 13px; }
+      button:disabled { opacity: .6; cursor: wait; }
+      #progress { margin-top: 14px; }
+      .summary { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+      .cinema { padding: 18px 0; border-bottom: 1px solid #2a303d; }
+      .cinema:last-child { border-bottom: 0; }
+      .cinema-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 10px; }
+      .location { color: #f2c46f; }
+      .times { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+      .time { padding: 9px 11px; border-radius: 9px; background: #202635; direction: ltr; }
+      .price { color: #74e7ad; font-weight: 700; }
+      .unavailable { color: #a9afbd; }
+      a { color: #84b9ff; }
+      pre { white-space: pre-wrap; direction: ltr; text-align: left; font-size: 12px; overflow: auto; }
+      [hidden] { display: none !important; }
+      @media (max-width: 900px) { .form { grid-template-columns: 1fr 1fr; } .form button { width: 100%; } }
+      @media (max-width: 560px) { main { margin-top: 24px; } .panel { padding: 16px; } .form { grid-template-columns: 1fr; } }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Cinema Finder</h1>
+      <div class="muted">اختار الفيلم والتاريخ والمكان وشوف كل المواعيد والأسعار فورًا.</div>
+      <div class="status">
+        <span id="freshness" class="badge">جاري تحميل آخر نسخة…</span>
+        <span id="stats" class="muted"></span>
+        <button id="reload" class="secondary" type="button">تحقق من نسخة أحدث</button>
+      </div>
+
+      <section class="panel">
+        <div class="form">
+          <label>الفيلم<select id="movie" disabled><option>جاري تحميل الأفلام…</option></select></label>
+          <label>التاريخ<select id="date" disabled><option>—</option></select></label>
+          <label>المحافظة / المدينة<select id="city" disabled><option value="">كل المحافظات والمدن</option></select></label>
+          <label>المنطقة<select id="area" disabled><option value="">كل المناطق</option></select></label>
+          <button id="search" disabled>اعرض المواعيد</button>
+        </div>
+        <div id="progress" class="muted"></div>
+      </section>
+
+      <section id="results" class="panel" hidden></section>
+      <details class="panel"><summary>عرض بيانات النتيجة JSON</summary><pre id="json">—</pre></details>
+    </main>
+
+    <script>
+      const elements = {
+        movie: document.querySelector("#movie"),
+        date: document.querySelector("#date"),
+        city: document.querySelector("#city"),
+        area: document.querySelector("#area"),
+        search: document.querySelector("#search"),
+        reload: document.querySelector("#reload"),
+        freshness: document.querySelector("#freshness"),
+        stats: document.querySelector("#stats"),
+        progress: document.querySelector("#progress"),
+        results: document.querySelector("#results"),
+        json: document.querySelector("#json"),
+      };
+      let snapshot = null;
+
+      const escapeHtml = (value) => String(value ?? "").replace(/[&<>\"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[char]);
+
+      function formatDate(value) {
+        return new Intl.DateTimeFormat("ar-EG", {
+          dateStyle: "full",
+          timeZone: "Africa/Cairo",
+        }).format(new Date(`${value}T12:00:00+03:00`));
+      }
+
+      function formatUpdatedAt(value) {
+        return new Intl.DateTimeFormat("ar-EG", {
+          dateStyle: "medium",
+          timeStyle: "short",
+          timeZone: "Africa/Cairo",
+        }).format(new Date(value));
+      }
+
+      function selectedMovie() {
+        return snapshot?.movies.find((item) => item.id === elements.movie.value);
+      }
+
+      function loadDates() {
+        const movie = selectedMovie();
+        elements.date.innerHTML = (movie?.availableDates || [])
+          .map((value) => `<option value="${value}">${escapeHtml(formatDate(value))}</option>`)
+          .join("");
+        elements.date.disabled = !movie?.availableDates?.length;
+      }
+
+      function loadAreas() {
+        const areas = snapshot?.locations?.areasByCity?.[elements.city.value] || [];
+        elements.area.innerHTML = `<option value="">كل المناطق</option>` + areas
+          .map((item) => `<option value="${item.id}">${escapeHtml(item.nameAr || item.nameEn)}</option>`)
+          .join("");
+        elements.area.disabled = !elements.city.value || !areas.length;
+      }
+
+      function renderTimes(showtimes) {
+        return showtimes.map((show) => {
+          const price = show.price != null
+            ? `<span class="price">${escapeHtml(show.price)} ${escapeHtml(show.currency || "EGP")}</span>`
+            : `<span class="unavailable">السعر غير متاح</span>`;
+          const experience = show.experience ? ` · ${escapeHtml(show.experience)}` : "";
+          return `<span class="time">${escapeHtml(show.time)} · ${price}${experience}</span>`;
+        }).join("");
+      }
+
+      function renderResults() {
+        const movie = selectedMovie();
+        const day = movie?.dates.find((item) => item.date === elements.date.value);
+        if (!movie || !day) {
+          elements.results.hidden = false;
+          elements.results.textContent = "لا توجد مواعيد متاحة لهذا الاختيار.";
+          return;
+        }
+
+        const cinemas = day.cinemas.filter((cinema) => {
+          const matchesCity = !elements.city.value || cinema.location?.city?.id === elements.city.value;
+          const matchesArea = !elements.area.value || cinema.location?.area?.id === elements.area.value;
+          return matchesCity && matchesArea;
+        });
+
+        elements.results.hidden = false;
+        elements.results.innerHTML = `
+          <div class="summary"><h2>${escapeHtml(movie.title)}</h2><span class="muted">${escapeHtml(formatDate(day.date))} · ${cinemas.length} سينما</span></div>
+          <div>${cinemas.length ? cinemas.map((cinema) => {
+            const locationText = [cinema.location?.area?.name, cinema.location?.city?.name].filter(Boolean).join("، ") || "الموقع غير مصنف";
+            return `<article class="cinema">
+              <div class="cinema-head"><h3>${escapeHtml(cinema.theater || cinema.name)}</h3><span class="location">${escapeHtml(locationText)}</span></div>
+              ${cinema.address ? `<div class="muted">${escapeHtml(cinema.address)}</div>` : ""}
+              <div class="times">${renderTimes(cinema.showtimes)}</div>
+              ${cinema.bookingUrl ? `<p><a href="${escapeHtml(cinema.bookingUrl)}" target="_blank" rel="noreferrer">الحجز على elCinema</a></p>` : ""}
+            </article>`;
+          }).join("") : `<p class="muted">لا توجد سينمات مطابقة للمكان المختار.</p>`}</div>`;
+
+        const resultData = { movie: { id: movie.id, title: movie.title }, date: day.date, cinemas };
+        elements.json.textContent = JSON.stringify(resultData, null, 2);
+        elements.progress.textContent = `تم عرض ${cinemas.length} سينما فورًا من النسخة المحفوظة.`;
+      }
+
+      async function loadSnapshot(force = false) {
+        elements.reload.disabled = true;
+        elements.progress.textContent = "جاري تحميل البيانات المحفوظة…";
+        try {
+          const suffix = force ? `?v=${Date.now()}` : "";
+          const response = await fetch(`./data/snapshot.json${suffix}`, { cache: force ? "reload" : "default" });
+          if (!response.ok) throw new Error(`لم يتم إنشاء ملف البيانات بعد (HTTP ${response.status}).`);
+          snapshot = await response.json();
+          if (!Array.isArray(snapshot.movies) || !snapshot.generatedAt) throw new Error("ملف البيانات غير صالح.");
+
+          elements.movie.innerHTML = snapshot.movies
+            .map((item) => `<option value="${item.id}">${escapeHtml(item.title)}</option>`)
+            .join("");
+          elements.city.innerHTML = `<option value="">كل المحافظات والمدن</option>` + snapshot.locations.cities
+            .map((item) => `<option value="${item.id}">${escapeHtml(item.nameAr || item.nameEn)}</option>`)
+            .join("");
+          elements.movie.disabled = false;
+          elements.city.disabled = false;
+          elements.search.disabled = false;
+          elements.freshness.textContent = `آخر تحديث: ${formatUpdatedAt(snapshot.generatedAt)}`;
+          elements.stats.textContent = `${snapshot.stats.movies} فيلم · ${snapshot.stats.cinemas} سينما · ${snapshot.stats.sessions} ميعاد`;
+          loadDates();
+          loadAreas();
+          elements.progress.textContent = "البيانات جاهزة — البحث والفلترة هيظهروا فورًا.";
+        } catch (error) {
+          elements.freshness.textContent = "البيانات غير متاحة";
+          elements.progress.textContent = `${error.message} شغّل npm run snapshot مرة أولى.`;
+        } finally {
+          elements.reload.disabled = false;
+        }
+      }
+
+      elements.movie.addEventListener("change", loadDates);
+      elements.city.addEventListener("change", loadAreas);
+      elements.search.addEventListener("click", renderResults);
+      elements.reload.addEventListener("click", () => loadSnapshot(true));
+      loadSnapshot();
+    </script>
+  </body>
+</html>
