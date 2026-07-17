@@ -1,6 +1,8 @@
-# Cinema Finder / elCinema Unofficial API — v0.3
+# spotCinema / elCinema Unofficial API — v0.4
 
-A small Node.js wrapper around public elCinema pages. It converts current movies, cinema showtimes, locations, and ticket prices into JSON. Version 0.3 adds a daily static snapshot, so the Arabic website can show every collected cinema and price immediately without contacting elCinema during the user's visit. The interface supports selecting several areas in one search and displays the selected movie poster with its results.
+> Spot the right movie, time, place, and price.
+
+A small Node.js wrapper around public elCinema pages. It converts current movies, cinema showtimes, locations, and ticket prices into JSON. The daily static snapshot lets the Arabic website show every collected cinema and price immediately without contacting elCinema during the user's visit. The interface supports selecting several areas, displays the movie poster, and can rank nearby cinemas using the visitor's live browser location.
 
 > This is an independent prototype. It is not affiliated with or endorsed by elCinema. Review elCinema's terms and obtain permission before commercial or high-volume use.
 
@@ -95,6 +97,8 @@ GET /api/locations/1/areas
 
 Location names are returned in Arabic and English from elCinema's own cinema directory. No external map API or API key is needed for these dropdowns.
 
+The **Use my location** button calculates distances inside the browser and filters cinemas within a 5, 10, 25, 50, or 100 km radius. The visitor's coordinates are not stored in the snapshot or sent to this application. Browser geolocation requires HTTPS or localhost; GitHub Pages already uses HTTPS.
+
 Each cinema returns a `pricesStatus` value:
 
 - `not_requested`: basic showtimes only.
@@ -122,8 +126,7 @@ The regular tests use local HTML samples. The live test makes real requests to e
 
 ## Suggested next steps
 
-1. Rank cinemas by distance from the user's live location.
-2. Add requested-time and maximum-price filters.
-3. Store normalized cinema data in PostgreSQL/Supabase.
-4. Add a scheduled parser health check and alert on markup changes.
-5. Contact elCinema before public or commercial launch.
+1. Add requested-time and maximum-price filters.
+2. Store normalized cinema data in PostgreSQL/Supabase.
+3. Add a scheduled parser health check and alert on markup changes.
+4. Contact elCinema before public or commercial launch.

@@ -144,12 +144,15 @@ export function parseTheaterDetails(html, theaterId) {
 
   const mapUrl = $("iframe#google-map-theater").attr("src") || "";
   const coordinatesMatch = mapUrl.match(/[?&]q=(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/);
-  const coordinates = coordinatesMatch
+  const parsedCoordinates = coordinatesMatch
     ? {
-        latitude: Number(coordinatesMatch[2]),
-        longitude: Number(coordinatesMatch[1]),
+        latitude: Number(coordinatesMatch[1]),
+        longitude: Number(coordinatesMatch[2]),
       }
     : null;
+  const coordinates = parsedCoordinates?.latitude === 0 && parsedCoordinates?.longitude === 0
+    ? null
+    : parsedCoordinates;
 
   return {
     id: String(theaterId),

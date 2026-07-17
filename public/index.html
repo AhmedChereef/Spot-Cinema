@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content="Spot the right movie, time, place, and price." />
-<title>SpotCinema — Movie Showtimes and Prices</title>
+    <title>spotCinema — Movie Showtimes and Prices</title>
     <style>
       :root { color-scheme: dark; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
       * { box-sizing: border-box; }
@@ -28,6 +28,11 @@
       .area-option { display: flex; grid-template-columns: none; align-items: center; gap: 9px; padding: 9px 8px; border-radius: 8px; color: #f7f7f8; cursor: pointer; }
       .area-option:hover { background: #202635; }
       .area-option input { width: 17px; height: 17px; margin: 0; accent-color: #e31b45; }
+      .location-tools { display: flex; flex-wrap: wrap; align-items: end; gap: 10px; margin-top: 16px; padding-top: 16px; border-top: 1px solid #252b38; }
+      .location-tools button { width: auto; }
+      .radius-label { display: flex; align-items: center; gap: 8px; }
+      .radius-label select { width: auto; min-width: 110px; }
+      .location-status { flex: 1 1 260px; align-self: center; }
       #progress { margin-top: 14px; }
       .summary { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 8px; }
       .movie-heading { display: flex; align-items: center; gap: 16px; min-width: 0; }
@@ -36,7 +41,9 @@
       .cinema { padding: 18px 0; border-bottom: 1px solid #2a303d; }
       .cinema:last-child { border-bottom: 0; }
       .cinema-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 10px; }
+      .cinema-place { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
       .location { color: #f2c46f; }
+      .distance { padding: 4px 9px; border-radius: 999px; background: #182a3d; color: #84b9ff; font-size: 13px; white-space: nowrap; }
       .times { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
       .time { padding: 9px 11px; border-radius: 9px; background: #202635; direction: ltr; }
       .price { color: #74e7ad; font-weight: 700; }
@@ -45,12 +52,12 @@
       pre { white-space: pre-wrap; direction: ltr; text-align: left; font-size: 12px; overflow: auto; }
       [hidden] { display: none !important; }
       @media (max-width: 900px) { .form { grid-template-columns: 1fr 1fr; } .form button { width: 100%; } }
-      @media (max-width: 560px) { main { margin-top: 24px; } .panel { padding: 16px; } .form { grid-template-columns: 1fr; } }
+      @media (max-width: 560px) { main { margin-top: 24px; } .panel { padding: 16px; } .form { grid-template-columns: 1fr; } .location-tools > button, .radius-label, .radius-label select { width: 100%; } }
     </style>
   </head>
   <body>
     <main>
-      <h1>SpotCinema</h1>
+      <h1>spotCinema</h1>
       <div class="muted" dir="ltr">Spot the right movie, time, place, and price.</div>
       <div class="status">
         <span id="freshness" class="badge">جاري تحميل آخر نسخة…</span>
@@ -71,6 +78,20 @@
           </label>
           <button id="search" disabled>اعرض المواعيد</button>
         </div>
+        <div class="location-tools">
+          <button id="locate" type="button" disabled>📍 استخدم موقعي</button>
+          <label class="radius-label">في نطاق
+            <select id="radius" disabled>
+              <option value="5">5 كم</option>
+              <option value="10">10 كم</option>
+              <option value="25" selected>25 كم</option>
+              <option value="50">50 كم</option>
+              <option value="100">100 كم</option>
+            </select>
+          </label>
+          <button id="clear-location" class="secondary" type="button" hidden>إلغاء الموقع</button>
+          <span id="location-status" class="muted location-status">موقعك يُستخدم داخل المتصفح فقط ولا يتم حفظه.</span>
+        </div>
         <div id="progress" class="muted"></div>
       </section>
 
@@ -86,6 +107,10 @@
         areaToggle: document.querySelector("#area-toggle"),
         areaMenu: document.querySelector("#area-menu"),
         search: document.querySelector("#search"),
+        locate: document.querySelector("#locate"),
+        radius: document.querySelector("#radius"),
+        clearLocation: document.querySelector("#clear-location"),
+        locationStatus: document.querySelector("#location-status"),
         reload: document.querySelector("#reload"),
         freshness: document.querySelector("#freshness"),
         stats: document.querySelector("#stats"),
@@ -94,6 +119,7 @@
         json: document.querySelector("#json"),
       };
       let snapshot = null;
+      let userLocation = null;
       const selectedAreaIds = new Set();
 
       const escapeHtml = (value) => String(value ?? "").replace(/[&<>\"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[char]);
@@ -111,6 +137,28 @@
           timeStyle: "short",
           timeZone: "Africa/Cairo",
         }).format(new Date(value));
+      }
+
+      function cinemaDistanceKm(cinema) {
+        if (!userLocation) return null;
+        const latitude = Number(cinema.coordinates?.latitude);
+        const longitude = Number(cinema.coordinates?.longitude);
+        if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
+        if (latitude < 20 || latitude > 33 || longitude < 24 || longitude > 37) return null;
+
+        const toRadians = (degrees) => degrees * Math.PI / 180;
+        const latitudeDelta = toRadians(latitude - userLocation.latitude);
+        const longitudeDelta = toRadians(longitude - userLocation.longitude);
+        const startLatitude = toRadians(userLocation.latitude);
+        const endLatitude = toRadians(latitude);
+        const haversine = Math.sin(latitudeDelta / 2) ** 2
+          + Math.cos(startLatitude) * Math.cos(endLatitude) * Math.sin(longitudeDelta / 2) ** 2;
+        return 6371 * 2 * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine));
+      }
+
+      function formatDistance(value) {
+        if (value < 1) return `${Math.max(1, Math.round(value * 1000))} متر`;
+        return `${new Intl.NumberFormat("ar-EG", { maximumFractionDigits: 1 }).format(value)} كم`;
       }
 
       function selectedMovie() {
@@ -163,11 +211,17 @@
           return;
         }
 
-        const cinemas = day.cinemas.filter((cinema) => {
-          const matchesCity = !elements.city.value || cinema.location?.city?.id === elements.city.value;
-          const matchesArea = !selectedAreaIds.size || selectedAreaIds.has(cinema.location?.area?.id);
-          return matchesCity && matchesArea;
-        });
+        const radiusKm = Number(elements.radius.value);
+        const nearbyMode = Boolean(userLocation);
+        const cinemas = day.cinemas
+          .map((cinema) => ({ ...cinema, distanceKm: cinemaDistanceKm(cinema) }))
+          .filter((cinema) => {
+            if (nearbyMode) return cinema.distanceKm != null && cinema.distanceKm <= radiusKm;
+            const matchesCity = !elements.city.value || cinema.location?.city?.id === elements.city.value;
+            const matchesArea = !selectedAreaIds.size || selectedAreaIds.has(cinema.location?.area?.id);
+            return matchesCity && matchesArea;
+          })
+          .sort((first, second) => nearbyMode ? first.distanceKm - second.distanceKm : 0);
 
         elements.results.hidden = false;
         elements.results.innerHTML = `
@@ -176,21 +230,71 @@
               ${movie.poster ? `<img class="poster" src="${escapeHtml(movie.poster)}" alt="بوستر ${escapeHtml(movie.title)}" loading="lazy">` : ""}
               <div><h2>${escapeHtml(movie.title)}</h2><span class="muted">${escapeHtml(formatDate(day.date))}</span></div>
             </div>
-            <span class="muted">${cinemas.length} سينما</span>
+            <span class="muted">${cinemas.length} سينما${nearbyMode ? ` قريبة منك في نطاق ${escapeHtml(radiusKm)} كم` : ""}</span>
           </div>
           <div>${cinemas.length ? cinemas.map((cinema) => {
             const locationText = [cinema.location?.area?.name, cinema.location?.city?.name].filter(Boolean).join("، ") || "الموقع غير مصنف";
             return `<article class="cinema">
-              <div class="cinema-head"><h3>${escapeHtml(cinema.theater || cinema.name)}</h3><span class="location">${escapeHtml(locationText)}</span></div>
+              <div class="cinema-head"><h3>${escapeHtml(cinema.theater || cinema.name)}</h3><span class="cinema-place"><span class="location">${escapeHtml(locationText)}</span>${cinema.distanceKm != null ? `<span class="distance">📍 ${escapeHtml(formatDistance(cinema.distanceKm))}</span>` : ""}</span></div>
               ${cinema.address ? `<div class="muted">${escapeHtml(cinema.address)}</div>` : ""}
               <div class="times">${renderTimes(cinema.showtimes)}</div>
               ${cinema.bookingUrl ? `<p><a href="${escapeHtml(cinema.bookingUrl)}" target="_blank" rel="noreferrer">الحجز على elCinema</a></p>` : ""}
             </article>`;
-          }).join("") : `<p class="muted">لا توجد سينمات مطابقة للمكان المختار.</p>`}</div>`;
+          }).join("") : `<p class="muted">${nearbyMode ? `لا توجد سينمات تعرض الفيلم داخل نطاق ${escapeHtml(radiusKm)} كم. جرّب نطاقًا أكبر.` : "لا توجد سينمات مطابقة للمكان المختار."}</p>`}</div>`;
 
-        const resultData = { movie: { id: movie.id, title: movie.title }, date: day.date, cinemas };
+        const resultData = { movie: { id: movie.id, title: movie.title }, date: day.date, nearbyRadiusKm: nearbyMode ? radiusKm : null, cinemas };
         elements.json.textContent = JSON.stringify(resultData, null, 2);
-        elements.progress.textContent = `تم عرض ${cinemas.length} سينما فورًا من النسخة المحفوظة.`;
+        elements.progress.textContent = nearbyMode
+          ? `تم ترتيب ${cinemas.length} سينما من الأقرب للأبعد داخل نطاق ${radiusKm} كم.`
+          : `تم عرض ${cinemas.length} سينما فورًا من النسخة المحفوظة.`;
+      }
+
+      function clearUserLocation(render = true) {
+        userLocation = null;
+        elements.radius.disabled = true;
+        elements.clearLocation.hidden = true;
+        elements.locate.textContent = "📍 استخدم موقعي";
+        elements.locationStatus.textContent = "تم إلغاء استخدام الموقع. يمكنك اختيار المحافظة والمناطق يدويًا.";
+        if (render && !elements.results.hidden) renderResults();
+      }
+
+      function locateUser() {
+        if (!("geolocation" in navigator)) {
+          elements.locationStatus.textContent = "المتصفح لا يدعم تحديد الموقع. استخدم اختيار المحافظة والمناطق.";
+          return;
+        }
+
+        elements.locate.disabled = true;
+        elements.locate.textContent = "جاري تحديد موقعك…";
+        elements.locationStatus.textContent = "اسمح للموقع بالوصول لمكانك عند ظهور رسالة المتصفح.";
+        navigator.geolocation.getCurrentPosition((position) => {
+          userLocation = {
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          };
+          elements.city.value = "";
+          loadAreas();
+          elements.radius.disabled = false;
+          elements.clearLocation.hidden = false;
+          elements.locate.disabled = false;
+          elements.locate.textContent = "📍 تحديث موقعي";
+          const accuracy = Math.round(position.coords.accuracy);
+          elements.locationStatus.textContent = `تم تحديد موقعك بدقة تقريبية ${accuracy} متر. موقعك لم يتم حفظه أو إرساله.`;
+          renderResults();
+        }, (error) => {
+          const messages = {
+            1: "تم رفض إذن الموقع. فعّله من إعدادات المتصفح أو استخدم اختيار المناطق.",
+            2: "تعذّر معرفة موقعك حاليًا. جرّب مرة أخرى أو استخدم اختيار المناطق.",
+            3: "استغرق تحديد الموقع وقتًا طويلًا. جرّب مرة أخرى.",
+          };
+          elements.locate.disabled = false;
+          elements.locate.textContent = "📍 استخدم موقعي";
+          elements.locationStatus.textContent = messages[error.code] || "حدث خطأ أثناء تحديد الموقع.";
+        }, {
+          enableHighAccuracy: false,
+          timeout: 10000,
+          maximumAge: 300000,
+        });
       }
 
       async function loadSnapshot(force = false) {
@@ -212,6 +316,7 @@
           elements.movie.disabled = false;
           elements.city.disabled = false;
           elements.search.disabled = false;
+          elements.locate.disabled = false;
           elements.freshness.textContent = `آخر تحديث: ${formatUpdatedAt(snapshot.generatedAt)}`;
           elements.stats.textContent = `${snapshot.stats.movies} فيلم · ${snapshot.stats.cinemas} سينما · ${snapshot.stats.sessions} ميعاد`;
           loadDates();
@@ -226,7 +331,10 @@
       }
 
       elements.movie.addEventListener("change", loadDates);
-      elements.city.addEventListener("change", loadAreas);
+      elements.city.addEventListener("change", () => {
+        if (userLocation) clearUserLocation(false);
+        loadAreas();
+      });
       elements.areaToggle.addEventListener("click", () => {
         elements.areaMenu.hidden = !elements.areaMenu.hidden;
       });
@@ -240,6 +348,11 @@
         if (!event.target.closest(".area-picker")) elements.areaMenu.hidden = true;
       });
       elements.search.addEventListener("click", renderResults);
+      elements.locate.addEventListener("click", locateUser);
+      elements.clearLocation.addEventListener("click", () => clearUserLocation());
+      elements.radius.addEventListener("change", () => {
+        if (userLocation) renderResults();
+      });
       elements.reload.addEventListener("click", () => loadSnapshot(true));
       loadSnapshot();
     </script>

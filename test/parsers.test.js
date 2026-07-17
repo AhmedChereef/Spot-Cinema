@@ -81,10 +81,18 @@ test("parses theater location and coordinates", () => {
       <li><a href="#google-map-theater">map</a> 10 Test Street</li>
       <li><a href="/en/theater/1/1/71">Heliopolis</a><a href="/en/theater/1/1">Cairo</a><a href="/en/theater/1/">Egypt</a><i class="fa-phone"></i> 16000</li>
     </ul>
-    <iframe id="google-map-theater" src="https://maps.google.com/maps?q=31.33,30.08&output=embed"></iframe>`;
+    <iframe id="google-map-theater" src="https://maps.google.com/maps?q=30.08,31.33&output=embed"></iframe>`;
   const theater = parseTheaterDetails(html, "3100000");
   assert.equal(theater.location.city.id, "1");
   assert.equal(theater.location.area.id, "71");
   assert.equal(theater.coordinates.latitude, 30.08);
   assert.equal(theater.coordinates.longitude, 31.33);
+});
+
+test("ignores missing zero coordinates from theater maps", () => {
+  const html = `<h1><span class="left">No Map Cinema</span></h1>
+    <ul class="unstyled no-margin"><li><a href="#google-map-theater">map</a> Test Street</li></ul>
+    <iframe id="google-map-theater" src="https://maps.google.com/maps?q=0,0&output=embed"></iframe>`;
+  const theater = parseTheaterDetails(html, "3100001");
+  assert.equal(theater.coordinates, null);
 });

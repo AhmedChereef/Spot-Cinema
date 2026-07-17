@@ -1,7 +1,7 @@
 {
-  "name": "elcinema-unofficial-api",
-  "version": "0.3.1",
-  "description": "A daily snapshot and cautious wrapper API for public elCinema movie showtimes.",
+  "name": "spotcinema",
+  "version": "0.4.0",
+  "description": "spotCinema: a daily snapshot and cautious wrapper API for public elCinema movie showtimes.",
   "type": "module",
   "main": "src/server.js",
   "scripts": {
