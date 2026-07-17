@@ -1,6 +1,6 @@
 {
   "name": "elcinema-unofficial-api",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "A daily snapshot and cautious wrapper API for public elCinema movie showtimes.",
   "type": "module",
   "main": "src/server.js",

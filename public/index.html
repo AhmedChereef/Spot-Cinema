@@ -22,8 +22,17 @@
       button { width: auto; padding-inline: 24px; cursor: pointer; background: #e31b45; border-color: #e31b45; font-weight: 700; }
       button.secondary { min-height: auto; padding: 6px 12px; background: transparent; border-color: #3a4355; font-size: 13px; }
       button:disabled { opacity: .6; cursor: wait; }
+      .area-picker { position: relative; }
+      .area-toggle { width: 100%; padding-inline: 12px; overflow: hidden; background: #0d1016; border-color: #333b4c; text-align: right; text-overflow: ellipsis; white-space: nowrap; font-weight: 400; }
+      .area-menu { position: absolute; z-index: 10; top: calc(100% + 6px); right: 0; left: 0; max-height: 280px; padding: 8px; overflow-y: auto; background: #10141c; border: 1px solid #3a4355; border-radius: 12px; box-shadow: 0 16px 36px #0009; }
+      .area-option { display: flex; grid-template-columns: none; align-items: center; gap: 9px; padding: 9px 8px; border-radius: 8px; color: #f7f7f8; cursor: pointer; }
+      .area-option:hover { background: #202635; }
+      .area-option input { width: 17px; height: 17px; margin: 0; accent-color: #e31b45; }
       #progress { margin-top: 14px; }
-      .summary { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+      .summary { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 8px; }
+      .movie-heading { display: flex; align-items: center; gap: 16px; min-width: 0; }
+      .poster { width: 82px; aspect-ratio: 2 / 3; flex: 0 0 auto; border-radius: 10px; object-fit: cover; background: #202635; box-shadow: 0 7px 20px #0007; }
+      .movie-heading h2 { margin-bottom: 5px; }
       .cinema { padding: 18px 0; border-bottom: 1px solid #2a303d; }
       .cinema:last-child { border-bottom: 0; }
       .cinema-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 10px; }
@@ -54,7 +63,12 @@
           <label>الفيلم<select id="movie" disabled><option>جاري تحميل الأفلام…</option></select></label>
           <label>التاريخ<select id="date" disabled><option>—</option></select></label>
           <label>المحافظة / المدينة<select id="city" disabled><option value="">كل المحافظات والمدن</option></select></label>
-          <label>المنطقة<select id="area" disabled><option value="">كل المناطق</option></select></label>
+          <label>المناطق
+            <span class="area-picker">
+              <button id="area-toggle" class="area-toggle" type="button" disabled>كل المناطق</button>
+              <span id="area-menu" class="area-menu" hidden></span>
+            </span>
+          </label>
           <button id="search" disabled>اعرض المواعيد</button>
         </div>
         <div id="progress" class="muted"></div>
@@ -69,7 +83,8 @@
         movie: document.querySelector("#movie"),
         date: document.querySelector("#date"),
         city: document.querySelector("#city"),
-        area: document.querySelector("#area"),
+        areaToggle: document.querySelector("#area-toggle"),
+        areaMenu: document.querySelector("#area-menu"),
         search: document.querySelector("#search"),
         reload: document.querySelector("#reload"),
         freshness: document.querySelector("#freshness"),
@@ -79,6 +94,7 @@
         json: document.querySelector("#json"),
       };
       let snapshot = null;
+      const selectedAreaIds = new Set();
 
       const escapeHtml = (value) => String(value ?? "").replace(/[&<>\"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[char]);
 
@@ -111,10 +127,21 @@
 
       function loadAreas() {
         const areas = snapshot?.locations?.areasByCity?.[elements.city.value] || [];
-        elements.area.innerHTML = `<option value="">كل المناطق</option>` + areas
-          .map((item) => `<option value="${item.id}">${escapeHtml(item.nameAr || item.nameEn)}</option>`)
+        selectedAreaIds.clear();
+        elements.areaMenu.innerHTML = areas
+          .map((item) => `<label class="area-option"><input type="checkbox" value="${item.id}"><span>${escapeHtml(item.nameAr || item.nameEn)}</span></label>`)
           .join("");
-        elements.area.disabled = !elements.city.value || !areas.length;
+        elements.areaToggle.disabled = !elements.city.value || !areas.length;
+        elements.areaMenu.hidden = true;
+        updateAreaLabel();
+      }
+
+      function updateAreaLabel() {
+        const selectedNames = [...elements.areaMenu.querySelectorAll("input:checked")]
+          .map((input) => input.nextElementSibling.textContent);
+        elements.areaToggle.textContent = selectedNames.length
+          ? selectedNames.length === 1 ? selectedNames[0] : `${selectedNames.length} مناطق مختارة`
+          : "كل المناطق";
       }
 
       function renderTimes(showtimes) {
@@ -138,13 +165,19 @@
 
         const cinemas = day.cinemas.filter((cinema) => {
           const matchesCity = !elements.city.value || cinema.location?.city?.id === elements.city.value;
-          const matchesArea = !elements.area.value || cinema.location?.area?.id === elements.area.value;
+          const matchesArea = !selectedAreaIds.size || selectedAreaIds.has(cinema.location?.area?.id);
           return matchesCity && matchesArea;
         });
 
         elements.results.hidden = false;
         elements.results.innerHTML = `
-          <div class="summary"><h2>${escapeHtml(movie.title)}</h2><span class="muted">${escapeHtml(formatDate(day.date))} · ${cinemas.length} سينما</span></div>
+          <div class="summary">
+            <div class="movie-heading">
+              ${movie.poster ? `<img class="poster" src="${escapeHtml(movie.poster)}" alt="بوستر ${escapeHtml(movie.title)}" loading="lazy">` : ""}
+              <div><h2>${escapeHtml(movie.title)}</h2><span class="muted">${escapeHtml(formatDate(day.date))}</span></div>
+            </div>
+            <span class="muted">${cinemas.length} سينما</span>
+          </div>
           <div>${cinemas.length ? cinemas.map((cinema) => {
             const locationText = [cinema.location?.area?.name, cinema.location?.city?.name].filter(Boolean).join("، ") || "الموقع غير مصنف";
             return `<article class="cinema">
@@ -194,6 +227,18 @@
 
       elements.movie.addEventListener("change", loadDates);
       elements.city.addEventListener("change", loadAreas);
+      elements.areaToggle.addEventListener("click", () => {
+        elements.areaMenu.hidden = !elements.areaMenu.hidden;
+      });
+      elements.areaMenu.addEventListener("change", (event) => {
+        if (!event.target.matches('input[type="checkbox"]')) return;
+        if (event.target.checked) selectedAreaIds.add(event.target.value);
+        else selectedAreaIds.delete(event.target.value);
+        updateAreaLabel();
+      });
+      document.addEventListener("click", (event) => {
+        if (!event.target.closest(".area-picker")) elements.areaMenu.hidden = true;
+      });
       elements.search.addEventListener("click", renderResults);
       elements.reload.addEventListener("click", () => loadSnapshot(true));
       loadSnapshot();

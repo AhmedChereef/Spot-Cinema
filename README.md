@@ -1,6 +1,6 @@
 # Cinema Finder / elCinema Unofficial API — v0.3
 
-A small Node.js wrapper around public elCinema pages. It converts current movies, cinema showtimes, locations, and ticket prices into JSON. Version 0.3 adds a daily static snapshot, so the Arabic website can show every collected cinema and price immediately without contacting elCinema during the user's visit.
+A small Node.js wrapper around public elCinema pages. It converts current movies, cinema showtimes, locations, and ticket prices into JSON. Version 0.3 adds a daily static snapshot, so the Arabic website can show every collected cinema and price immediately without contacting elCinema during the user's visit. The interface supports selecting several areas in one search and displays the selected movie poster with its results.
 
 > This is an independent prototype. It is not affiliated with or endorsed by elCinema. Review elCinema's terms and obtain permission before commercial or high-volume use.
 
@@ -49,14 +49,6 @@ The included `.github/workflows/daily-snapshot.yml` workflow:
 4. Can also be started manually from the Actions tab.
 
 After pushing this folder to a GitHub repository, open **Settings → Pages → Build and deployment**, select **GitHub Actions**, then run **Daily cinema snapshot** once. The deployed website is static, so neither this Node server nor your computer needs to remain running.
-
-### Upload from the GitHub website (no CMD)
-
-1. Extract the supplied ZIP on your computer.
-2. Open the extracted project folder, select every file and folder inside it, and drag them onto **Add file → Upload files** in the empty GitHub repository.
-3. Commit directly to the `main` branch.
-4. Open **Settings → Pages** and choose **GitHub Actions** under **Build and deployment**.
-5. Open **Actions → Daily cinema snapshot**. The first push publishes the included ready snapshot immediately; future scheduled/manual runs rebuild the data first.
 
 ## API
 
