@@ -45,7 +45,7 @@ app.use((req, res, next) => {
 app.use(express.static("public", { extensions: ["html"] }));
 
 app.get("/api/health", (_req, res) => {
-  res.json({ ok: true, service: "spotcinema", version: "0.4.0" });
+  res.json({ ok: true, service: "spotcinema", version: "0.5.0" });
 });
 
 app.get("/api/locations", async (_req, res, next) => {

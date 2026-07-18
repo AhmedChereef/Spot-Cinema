@@ -1,8 +1,8 @@
-# spotCinema / elCinema Unofficial API — v0.4
+# spotCinema / elCinema Unofficial API — v0.5
 
 > Spot the right movie, time, place, and price.
 
-A small Node.js wrapper around public elCinema pages. It converts current movies, cinema showtimes, locations, and ticket prices into JSON. The daily static snapshot lets the Arabic website show every collected cinema and price immediately without contacting elCinema during the user's visit. The interface supports selecting several areas, displays the movie poster, and can rank nearby cinemas using the visitor's live browser location.
+A small Node.js wrapper around public elCinema pages. It converts current movies, cinema showtimes, locations, and ticket prices into JSON. The daily static snapshot lets the Arabic website show every collected cinema and price immediately without contacting elCinema during the user's visit. The interface supports selecting several areas, displays the movie poster, ranks nearby cinemas, and finds the next available showing from the current time.
 
 > This is an independent prototype. It is not affiliated with or endorsed by elCinema. Review elCinema's terms and obtain permission before commercial or high-volume use.
 
@@ -21,7 +21,7 @@ Open <http://localhost:3000> to try the Arabic playground.
 For responsible requests, edit `.env` and replace the default user agent with a real contact email:
 
 ```env
-ELCINEMA_USER_AGENT=CinemaFinderPrototype/0.1 (+you@example.com)
+ELCINEMA_USER_AGENT=SpotCinemaPrototype/0.5 (+you@example.com)
 ```
 
 ## Build the fast daily snapshot
@@ -98,6 +98,8 @@ GET /api/locations/1/areas
 Location names are returned in Arabic and English from elCinema's own cinema directory. No external map API or API key is needed for these dropdowns.
 
 The **Use my location** button calculates distances inside the browser and filters cinemas within a 5, 10, 25, 50, or 100 km radius. The visitor's coordinates are not stored in the snapshot or sent to this application. Browser geolocation requires HTTPS or localhost; GitHub Pages already uses HTTPS.
+
+The **Next showtime from now** button checks the current time in Cairo and searches every cached day for the selected movie. It respects the active city, area, or nearby-radius filter, then shows the cinema, ticket price, experience, distance, and the two next alternatives.
 
 Each cinema returns a `pricesStatus` value:
 

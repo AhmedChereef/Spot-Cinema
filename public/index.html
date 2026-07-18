@@ -28,6 +28,9 @@
       .area-option { display: flex; grid-template-columns: none; align-items: center; gap: 9px; padding: 9px 8px; border-radius: 8px; color: #f7f7f8; cursor: pointer; }
       .area-option:hover { background: #202635; }
       .area-option input { width: 17px; height: 17px; margin: 0; accent-color: #e31b45; }
+      .quick-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 16px; }
+      .quick-tools button { width: auto; background: #f2c46f; border-color: #f2c46f; color: #171109; }
+      .current-time { padding: 7px 10px; border-radius: 999px; background: #202635; color: #f7f7f8; white-space: nowrap; }
       .location-tools { display: flex; flex-wrap: wrap; align-items: end; gap: 10px; margin-top: 16px; padding-top: 16px; border-top: 1px solid #252b38; }
       .location-tools button { width: auto; }
       .radius-label { display: flex; align-items: center; gap: 8px; }
@@ -44,6 +47,12 @@
       .cinema-place { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
       .location { color: #f2c46f; }
       .distance { padding: 4px 9px; border-radius: 999px; background: #182a3d; color: #84b9ff; font-size: 13px; white-space: nowrap; }
+      .recommendation { margin-top: 18px; padding: 20px; border: 1px solid #6d572b; border-radius: 14px; background: linear-gradient(135deg, #2a2315, #181b22); }
+      .recommendation-label { color: #f2c46f; font-weight: 700; }
+      .recommendation-time { margin: 8px 0 4px; font-size: clamp(24px, 4vw, 34px); font-weight: 800; }
+      .recommendation-details { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-top: 12px; }
+      .alternatives { margin: 18px 0 0; padding-top: 16px; border-top: 1px solid #2a303d; }
+      .alternative { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px; padding: 10px 0; }
       .times { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
       .time { padding: 9px 11px; border-radius: 9px; background: #202635; direction: ltr; }
       .price { color: #74e7ad; font-weight: 700; }
@@ -52,7 +61,7 @@
       pre { white-space: pre-wrap; direction: ltr; text-align: left; font-size: 12px; overflow: auto; }
       [hidden] { display: none !important; }
       @media (max-width: 900px) { .form { grid-template-columns: 1fr 1fr; } .form button { width: 100%; } }
-      @media (max-width: 560px) { main { margin-top: 24px; } .panel { padding: 16px; } .form { grid-template-columns: 1fr; } .location-tools > button, .radius-label, .radius-label select { width: 100%; } }
+      @media (max-width: 560px) { main { margin-top: 24px; } .panel { padding: 16px; } .form { grid-template-columns: 1fr; } .quick-tools > button, .location-tools > button, .radius-label, .radius-label select { width: 100%; } }
     </style>
   </head>
   <body>
@@ -78,6 +87,11 @@
           </label>
           <button id="search" disabled>اعرض المواعيد</button>
         </div>
+        <div class="quick-tools">
+          <button id="nearest" type="button" disabled>⏱️ أقرب ميعاد من دلوقتي</button>
+          <span id="current-time" class="current-time">الوقت الآن في مصر: —</span>
+          <span class="muted">يبحث في كل الأيام المتاحة للفيلم.</span>
+        </div>
         <div class="location-tools">
           <button id="locate" type="button" disabled>📍 استخدم موقعي</button>
           <label class="radius-label">في نطاق
@@ -99,7 +113,9 @@
       <details class="panel"><summary>عرض بيانات النتيجة JSON</summary><pre id="json">—</pre></details>
     </main>
 
-    <script>
+    <script type="module">
+      import { findUpcomingShowings } from "./time-utils.js";
+
       const elements = {
         movie: document.querySelector("#movie"),
         date: document.querySelector("#date"),
@@ -107,6 +123,8 @@
         areaToggle: document.querySelector("#area-toggle"),
         areaMenu: document.querySelector("#area-menu"),
         search: document.querySelector("#search"),
+        nearest: document.querySelector("#nearest"),
+        currentTime: document.querySelector("#current-time"),
         locate: document.querySelector("#locate"),
         radius: document.querySelector("#radius"),
         clearLocation: document.querySelector("#clear-location"),
@@ -137,6 +155,31 @@
           timeStyle: "short",
           timeZone: "Africa/Cairo",
         }).format(new Date(value));
+      }
+
+      function updateCurrentTime() {
+        const time = new Intl.DateTimeFormat("ar-EG", {
+          hour: "numeric",
+          minute: "2-digit",
+          timeZone: "Africa/Cairo",
+        }).format(new Date());
+        elements.currentTime.textContent = `الوقت الآن في مصر: ${time}`;
+      }
+
+      function formatShowingDate(value) {
+        return new Intl.DateTimeFormat("ar-EG", {
+          dateStyle: "full",
+          timeStyle: "short",
+          timeZone: "Africa/Cairo",
+        }).format(new Date(value));
+      }
+
+      function formatWaitingTime(milliseconds) {
+        const minutes = Math.max(0, Math.ceil(milliseconds / 60000));
+        if (minutes < 60) return `بعد ${minutes} دقيقة`;
+        const hours = Math.floor(minutes / 60);
+        const remainingMinutes = minutes % 60;
+        return remainingMinutes ? `بعد ${hours} ساعة و${remainingMinutes} دقيقة` : `بعد ${hours} ساعة`;
       }
 
       function cinemaDistanceKm(cinema) {
@@ -202,6 +245,19 @@
         }).join("");
       }
 
+      function filteredCinemas(day) {
+        const radiusKm = Number(elements.radius.value);
+        const nearbyMode = Boolean(userLocation);
+        return (day?.cinemas || [])
+          .map((cinema) => ({ ...cinema, distanceKm: cinemaDistanceKm(cinema) }))
+          .filter((cinema) => {
+            if (nearbyMode) return cinema.distanceKm != null && cinema.distanceKm <= radiusKm;
+            const matchesCity = !elements.city.value || cinema.location?.city?.id === elements.city.value;
+            const matchesArea = !selectedAreaIds.size || selectedAreaIds.has(cinema.location?.area?.id);
+            return matchesCity && matchesArea;
+          });
+      }
+
       function renderResults() {
         const movie = selectedMovie();
         const day = movie?.dates.find((item) => item.date === elements.date.value);
@@ -213,14 +269,7 @@
 
         const radiusKm = Number(elements.radius.value);
         const nearbyMode = Boolean(userLocation);
-        const cinemas = day.cinemas
-          .map((cinema) => ({ ...cinema, distanceKm: cinemaDistanceKm(cinema) }))
-          .filter((cinema) => {
-            if (nearbyMode) return cinema.distanceKm != null && cinema.distanceKm <= radiusKm;
-            const matchesCity = !elements.city.value || cinema.location?.city?.id === elements.city.value;
-            const matchesArea = !selectedAreaIds.size || selectedAreaIds.has(cinema.location?.area?.id);
-            return matchesCity && matchesArea;
-          })
+        const cinemas = filteredCinemas(day)
           .sort((first, second) => nearbyMode ? first.distanceKm - second.distanceKm : 0);
 
         elements.results.hidden = false;
@@ -247,6 +296,80 @@
         elements.progress.textContent = nearbyMode
           ? `تم ترتيب ${cinemas.length} سينما من الأقرب للأبعد داخل نطاق ${radiusKm} كم.`
           : `تم عرض ${cinemas.length} سينما فورًا من النسخة المحفوظة.`;
+      }
+
+      function renderNearestShowing() {
+        const movie = selectedMovie();
+        const now = new Date();
+        if (!movie) return;
+
+        const filteredDays = movie.dates.map((day) => ({ ...day, cinemas: filteredCinemas(day) }));
+        const showings = findUpcomingShowings(filteredDays, now, 3);
+        elements.results.hidden = false;
+
+        if (!showings.length) {
+          elements.results.innerHTML = `
+            <div class="summary">
+              <div class="movie-heading">
+                ${movie.poster ? `<img class="poster" src="${escapeHtml(movie.poster)}" alt="بوستر ${escapeHtml(movie.title)}" loading="lazy">` : ""}
+                <div><h2>${escapeHtml(movie.title)}</h2><span class="muted">لا توجد حفلات لاحقة للوقت الحالي ضمن المكان المختار.</span></div>
+              </div>
+            </div>
+            <p class="muted">جرّب توسيع نطاق المسافة، تغيير المناطق، أو اختيار فيلم آخر.</p>`;
+          elements.json.textContent = JSON.stringify({ movie: { id: movie.id, title: movie.title }, searchedAt: now.toISOString(), showings: [] }, null, 2);
+          elements.progress.textContent = "لم يتم العثور على ميعاد قادم في البيانات المحفوظة.";
+          return;
+        }
+
+        const nearest = showings[0];
+        const cinema = nearest.cinema;
+        const showtime = nearest.showtime;
+        const locationText = [cinema.location?.area?.name, cinema.location?.city?.name].filter(Boolean).join("، ") || "الموقع غير مصنف";
+        const price = showtime.price != null
+          ? `<span class="price">${escapeHtml(showtime.price)} ${escapeHtml(showtime.currency || "EGP")}</span>`
+          : `<span class="unavailable">السعر غير متاح</span>`;
+        const alternatives = showings.slice(1);
+
+        elements.results.innerHTML = `
+          <div class="summary">
+            <div class="movie-heading">
+              ${movie.poster ? `<img class="poster" src="${escapeHtml(movie.poster)}" alt="بوستر ${escapeHtml(movie.title)}" loading="lazy">` : ""}
+              <div><h2>${escapeHtml(movie.title)}</h2><span class="muted">أقرب حفلة بعد الوقت الحالي</span></div>
+            </div>
+          </div>
+          <article class="recommendation">
+            <div class="recommendation-label">أفضل ميعاد متاح الآن · ${escapeHtml(formatWaitingTime(nearest.startsAtTimestamp - now.getTime()))}</div>
+            <div class="recommendation-time">${escapeHtml(formatShowingDate(nearest.startsAt))}</div>
+            <h3>${escapeHtml(cinema.theater || cinema.name)}</h3>
+            <div class="recommendation-details">
+              <span class="location">${escapeHtml(locationText)}</span>
+              ${cinema.distanceKm != null ? `<span class="distance">📍 ${escapeHtml(formatDistance(cinema.distanceKm))}</span>` : ""}
+              <span>${price}</span>
+              ${showtime.experience ? `<span>${escapeHtml(showtime.experience)}</span>` : ""}
+            </div>
+            ${cinema.address ? `<p class="muted">${escapeHtml(cinema.address)}</p>` : ""}
+            ${cinema.bookingUrl ? `<p><a href="${escapeHtml(cinema.bookingUrl)}" target="_blank" rel="noreferrer">احجز هذه الحفلة على elCinema</a></p>` : ""}
+          </article>
+          ${alternatives.length ? `<div class="alternatives"><h3>أقرب بدائل بعدها</h3>${alternatives.map((showing) => {
+            const alternativePrice = showing.showtime.price != null
+              ? `${escapeHtml(showing.showtime.price)} ${escapeHtml(showing.showtime.currency || "EGP")}`
+              : "السعر غير متاح";
+            return `<div class="alternative"><span><strong>${escapeHtml(showing.cinema.theater || showing.cinema.name)}</strong> · ${escapeHtml(formatShowingDate(showing.startsAt))}</span><span class="muted">${alternativePrice}${showing.cinema.distanceKm != null ? ` · ${escapeHtml(formatDistance(showing.cinema.distanceKm))}` : ""}</span></div>`;
+          }).join("")}</div>` : ""}`;
+
+        elements.json.textContent = JSON.stringify({
+          movie: { id: movie.id, title: movie.title },
+          searchedAt: now.toISOString(),
+          showings: showings.map((showing) => ({
+            startsAt: showing.startsAt,
+            cinema: showing.cinema.theater || showing.cinema.name,
+            distanceKm: showing.cinema.distanceKm,
+            price: showing.showtime.price,
+            currency: showing.showtime.currency,
+            experience: showing.showtime.experience,
+          })),
+        }, null, 2);
+        elements.progress.textContent = `تم حساب أقرب ميعاد من الساعة ${new Intl.DateTimeFormat("ar-EG", { timeStyle: "short", timeZone: "Africa/Cairo" }).format(now)}.`;
       }
 
       function clearUserLocation(render = true) {
@@ -316,6 +439,7 @@
           elements.movie.disabled = false;
           elements.city.disabled = false;
           elements.search.disabled = false;
+          elements.nearest.disabled = false;
           elements.locate.disabled = false;
           elements.freshness.textContent = `آخر تحديث: ${formatUpdatedAt(snapshot.generatedAt)}`;
           elements.stats.textContent = `${snapshot.stats.movies} فيلم · ${snapshot.stats.cinemas} سينما · ${snapshot.stats.sessions} ميعاد`;
@@ -348,12 +472,15 @@
         if (!event.target.closest(".area-picker")) elements.areaMenu.hidden = true;
       });
       elements.search.addEventListener("click", renderResults);
+      elements.nearest.addEventListener("click", renderNearestShowing);
       elements.locate.addEventListener("click", locateUser);
       elements.clearLocation.addEventListener("click", () => clearUserLocation());
       elements.radius.addEventListener("change", () => {
         if (userLocation) renderResults();
       });
       elements.reload.addEventListener("click", () => loadSnapshot(true));
+      updateCurrentTime();
+      window.setInterval(updateCurrentTime, 30000);
       loadSnapshot();
     </script>
   </body>
