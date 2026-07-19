@@ -47,3 +47,27 @@ export function parseNowPlaying(html) {
   return movies;
 }
 
+export function mergeLocalizedMovies(arabicMovies, englishMovies) {
+  const arabicById = new Map(arabicMovies.map((movie) => [movie.id, movie]));
+  const englishById = new Map(englishMovies.map((movie) => [movie.id, movie]));
+  const ids = [
+    ...englishMovies.map((movie) => movie.id),
+    ...arabicMovies.map((movie) => movie.id).filter((id) => !englishById.has(id)),
+  ];
+
+  return ids.map((id) => {
+    const arabic = arabicById.get(id);
+    const english = englishById.get(id);
+    const titleAr = arabic?.title || null;
+    const titleEn = english?.title || null;
+
+    return {
+      ...(arabic || {}),
+      ...(english || {}),
+      id,
+      title: titleAr || titleEn,
+      titleAr,
+      titleEn,
+    };
+  });
+}

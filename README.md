@@ -1,8 +1,8 @@
-# spotCinema / elCinema Unofficial API — v0.5
+# spotCinema / elCinema Unofficial API — v0.5.1
 
 > Spot the right movie, time, place, and price.
 
-A small Node.js wrapper around public elCinema pages. It converts current movies, cinema showtimes, locations, and ticket prices into JSON. The daily static snapshot lets the Arabic website show every collected cinema and price immediately without contacting elCinema during the user's visit. The interface supports selecting several areas, displays the movie poster, ranks nearby cinemas, and finds the next available showing from the current time.
+A small Node.js wrapper around public elCinema pages. It converts current movies, cinema showtimes, locations, and ticket prices into JSON. The daily static snapshot lets the Arabic website show every collected cinema and price immediately without contacting elCinema during the user's visit. Arabic films use their Arabic elCinema titles while preserving `titleAr` and `titleEn`. The interface supports selecting several areas, displays the movie poster, ranks nearby cinemas, and finds the next available showing from the current time.
 
 > This is an independent prototype. It is not affiliated with or endorsed by elCinema. Review elCinema's terms and obtain permission before commercial or high-volume use.
 
@@ -21,7 +21,7 @@ Open <http://localhost:3000> to try the Arabic playground.
 For responsible requests, edit `.env` and replace the default user agent with a real contact email:
 
 ```env
-ELCINEMA_USER_AGENT=SpotCinemaPrototype/0.5 (+you@example.com)
+ELCINEMA_USER_AGENT=SpotCinemaPrototype/0.5.1 (+you@example.com)
 ```
 
 ## Build the fast daily snapshot

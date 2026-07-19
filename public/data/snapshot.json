@@ -643,7 +643,7 @@
   "movies": [
     {
       "id": "2100828",
-      "title": "Al Haya Al Yawmiyah fi Quariah Suriyah",
+      "title": "الحياة اليومية في قرية سورية",
       "poster": "https://media0103.elcinema.com/uploads/_320x_1677d610cb444b0d1852dffe9c695fbd3e7cada90ba162d437c56bf31c35761c.jpg",
       "rating": 0,
       "censorship": null,
@@ -706,7 +706,9 @@
             }
           ]
         }
-      ]
+      ],
+      "titleAr": "الحياة اليومية في قرية سورية",
+      "titleEn": "Al Haya Al Yawmiyah fi Quariah Suriyah"
     },
     {
       "id": "2094711",
@@ -1612,7 +1614,9 @@
             }
           ]
         }
-      ]
+      ],
+      "titleAr": "Keeper",
+      "titleEn": "Keeper"
     },
     {
       "id": "2095329",
@@ -5798,11 +5802,13 @@
             }
           ]
         }
-      ]
+      ],
+      "titleAr": "The Odyssey",
+      "titleEn": "The Odyssey"
     },
     {
       "id": "2097608",
-      "title": "Ebn Meen Feehom",
+      "title": "ابن مين فيهم",
       "poster": "https://media0103.elcinema.com/uploads/_320x_a3d87ca95889adb1a4fa82b08858c8a6ee2987de079baef0d5e72938090a9f4d.jpg",
       "rating": 5,
       "censorship": "All Ages",
@@ -7589,7 +7595,9 @@
             }
           ]
         }
-      ]
+      ],
+      "titleAr": "ابن مين فيهم",
+      "titleEn": "Ebn Meen Feehom"
     },
     {
       "id": "2094936",
@@ -7677,11 +7685,13 @@
             }
           ]
         }
-      ]
+      ],
+      "titleAr": "Seven Snipers",
+      "titleEn": "Seven Snipers"
     },
     {
       "id": "2096884",
-      "title": "Shamshon w Dalilah",
+      "title": "شمشون ودليلة",
       "poster": "https://media0103.elcinema.com/uploads/_320x_ab88cd97f841943db479441effd55f3738dd3a0146d88532b4359e8ce3f0be98.jpg",
       "rating": 2.9,
       "censorship": "+12",
@@ -13851,7 +13861,9 @@
             }
           ]
         }
-      ]
+      ],
+      "titleAr": "شمشون ودليلة",
+      "titleEn": "Shamshon w Dalilah"
     },
     {
       "id": "2095884",
@@ -16391,7 +16403,9 @@
             }
           ]
         }
-      ]
+      ],
+      "titleAr": "Moana",
+      "titleEn": "Moana"
     },
     {
       "id": "2099085",
@@ -16460,7 +16474,9 @@
             }
           ]
         }
-      ]
+      ],
+      "titleAr": "I Swear",
+      "titleEn": "I Swear"
     },
     {
       "id": "2099406",
@@ -18428,7 +18444,9 @@
             }
           ]
         }
-      ]
+      ],
+      "titleAr": "Evil Dead Burn",
+      "titleEn": "Evil Dead Burn"
     },
     {
       "id": "2097647",
@@ -18515,7 +18533,9 @@
             }
           ]
         }
-      ]
+      ],
+      "titleAr": "Pose / Mind Trap",
+      "titleEn": "Pose / Mind Trap"
     },
     {
       "id": "2099728",
@@ -18651,11 +18671,13 @@
             }
           ]
         }
-      ]
+      ],
+      "titleAr": "Black Box",
+      "titleEn": "Black Box"
     },
     {
       "id": "2098745",
-      "title": "Cartoon - Minions & Monsters",
+      "title": "Minions & Monsters",
       "poster": "https://media0103.elcinema.com/uploads/_320x_d66a628a04ac318953a6f3e29c18148f5d5b7331ee7c6be89505024e0d934ace.jpg",
       "rating": 5,
       "censorship": "All Ages",
@@ -19343,7 +19365,9 @@
             }
           ]
         }
-      ]
+      ],
+      "titleAr": "Minions & Monsters",
+      "titleEn": "Minions & Monsters"
     },
     {
       "id": "2095545",
@@ -19499,11 +19523,13 @@
             }
           ]
         }
-      ]
+      ],
+      "titleAr": "Supergirl",
+      "titleEn": "Supergirl"
     },
     {
       "id": "2093181",
-      "title": "Saqr w Kanarya",
+      "title": "صقر وكناريا",
       "poster": "https://media0103.elcinema.com/uploads/_320x_719ba2085a234c56a4836629b3e324814578556e4db171906781a06247494a9b.jpg",
       "rating": 7.8,
       "censorship": "+16",
@@ -27777,11 +27803,13 @@
             }
           ]
         }
-      ]
+      ],
+      "titleAr": "صقر وكناريا",
+      "titleEn": "Saqr w Kanarya"
     },
     {
       "id": "2097388",
-      "title": "Cartoon - Toy Story 5",
+      "title": "Toy Story 5",
       "poster": "https://media0103.elcinema.com/uploads/_320x_c55f84bdf3de370979a0860666eb565a9737a46569ab84a223a5d4b6b464ffec.jpg",
       "rating": 7.7,
       "censorship": "All Ages",
@@ -30298,7 +30326,9 @@
             }
           ]
         }
-      ]
+      ],
+      "titleAr": "Toy Story 5",
+      "titleEn": "Toy Story 5"
     }
   ],
   "failures": []

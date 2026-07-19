@@ -3,7 +3,7 @@ import { cache } from "./lib/cache.js";
 import { getHtml, getTheaterDetailsHtml, getTheaterShowtimesHtml } from "./lib/http.js";
 import { NotFoundError } from "./lib/errors.js";
 import { mergeLocalizedLocations, parseAreas, parseCities } from "./parsers/locations.js";
-import { parseNowPlaying } from "./parsers/movies.js";
+import { mergeLocalizedMovies, parseNowPlaying } from "./parsers/movies.js";
 import {
   parseMovieShowtimes,
   parseTheaterDetails,
@@ -11,20 +11,32 @@ import {
 } from "./parsers/showtimes.js";
 
 export async function getNowPlaying({ query } = {}) {
-  const resultKey = "DATA:now-playing";
+  const resultKey = "DATA:now-playing:localized";
   let movies = cache.get(resultKey);
   let cacheStatus = "hit";
 
   if (!movies) {
-    const result = await getHtml("/en/now/");
-    movies = parseNowPlaying(result.html);
+    const english = await getHtml("/en/now/");
+    const englishMovies = parseNowPlaying(english.html);
+    let arabicMovies = [];
+    let arabicCacheStatus = "unavailable";
+    try {
+      const arabic = await getHtml("/now/");
+      arabicMovies = parseNowPlaying(arabic.html);
+      arabicCacheStatus = arabic.cache;
+    } catch {
+      // Keep the English catalog available if the localized page temporarily fails.
+    }
+    movies = mergeLocalizedMovies(arabicMovies, englishMovies);
     cache.set(resultKey, movies, config.cacheTtlMs);
-    cacheStatus = result.cache;
+    cacheStatus = english.cache === "hit" && arabicCacheStatus === "hit" ? "hit" : "miss";
   }
 
   if (query) {
     const needle = query.toLocaleLowerCase();
-    movies = movies.filter((movie) => movie.title.toLocaleLowerCase().includes(needle));
+    movies = movies.filter((movie) => [movie.title, movie.titleAr, movie.titleEn]
+      .filter(Boolean)
+      .some((title) => title.toLocaleLowerCase().includes(needle)));
   }
 
   return { movies, cacheStatus };

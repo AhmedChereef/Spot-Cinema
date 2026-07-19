@@ -73,6 +73,9 @@ async function buildMovie(movie, index, total, theaterCache) {
   return {
     ...movie,
     ...first.movie,
+    title: movie.title || first.movie.title,
+    titleAr: movie.titleAr || null,
+    titleEn: movie.titleEn || first.movie.title || null,
     availableDates: days.map((day) => day.date),
     dates: days,
   };

@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { mergeLocalizedLocations, parseAreas, parseCities } from "../src/parsers/locations.js";
-import { parseNowPlaying } from "../src/parsers/movies.js";
+import { mergeLocalizedMovies, parseNowPlaying } from "../src/parsers/movies.js";
 import {
   parseMovieShowtimes,
   parseTheaterDetails,
@@ -25,6 +25,21 @@ test("parses now-playing movies", () => {
   assert.equal(movies[0].title, "Saqr w Kanarya");
   assert.equal(movies[0].rating, 7.8);
   assert.deepEqual(movies[0].genres, ["Action"]);
+});
+
+test("uses Arabic movie titles while preserving both localized names", () => {
+  const english = [{ id: "2093181", title: "Saqr w Kanarya", poster: "poster.jpg" }, { id: "2094711", title: "Keeper" }];
+  const arabic = [{ id: "2093181", title: "صقر وكناريا" }, { id: "2094711", title: "Keeper" }];
+  const movies = mergeLocalizedMovies(arabic, english);
+
+  assert.deepEqual(movies[0], {
+    id: "2093181",
+    title: "صقر وكناريا",
+    titleAr: "صقر وكناريا",
+    titleEn: "Saqr w Kanarya",
+    poster: "poster.jpg",
+  });
+  assert.equal(movies[1].title, "Keeper");
 });
 
 test("parses movie cinema showtimes and after-midnight dates", () => {
