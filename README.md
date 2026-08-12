@@ -1,4 +1,4 @@
-# spotCinema / elCinema Unofficial API — v0.6.0
+# spotCinema / elCinema Unofficial API — v0.6.1
 
 > Spot the right movie, time, place, and price.
 
@@ -21,7 +21,7 @@ Open <http://localhost:3000> to try the Arabic playground.
 For responsible requests, edit `.env` and replace the default user agent with a real contact email:
 
 ```env
-ELCINEMA_USER_AGENT=SpotCinemaPrototype/0.6.0 (+you@example.com)
+ELCINEMA_USER_AGENT=SpotCinemaPrototype/0.6.1 (+you@example.com)
 ```
 
 ## Build the fast daily snapshot
@@ -40,6 +40,8 @@ SNAPSHOT_DAYS=3 npm run snapshot
 ```
 
 The write is atomic: the previous valid snapshot remains available if a collection run fails before completion. The website displays the snapshot's last-update time and has a button that checks whether a newer file was published.
+
+Transient elCinema `502`, `503`, and `504` responses, connection errors, and timeouts are retried automatically up to five times. The default backoff is 1.5, 3, 6, then 12 seconds and can be adjusted with `REQUEST_MAX_ATTEMPTS` and `REQUEST_RETRY_BASE_MS`.
 
 ## Run daily without keeping CMD open
 
@@ -102,6 +104,8 @@ The **Use my location** button calculates distances inside the browser and filte
 The **Next showtime from now** button checks the current time in Cairo and searches every cached day for the selected movie. It respects the active city, area, or nearby-radius filter, then shows the cinema, ticket price, experience, distance, and the two next alternatives.
 
 The v0.6.0 mobile-first interface adds a searchable poster gallery, date chips, a clearer location card, a highlighted best-showing recommendation, and compact cinema cards while preserving every collected showtime and ticket price.
+
+Version 0.6.1 makes the daily snapshot resilient to temporary elCinema gateway outages and upgrades every workflow action to a current Node 24-based release: `actions/checkout@v7`, `actions/setup-node@v7`, `actions/configure-pages@v6`, `actions/upload-pages-artifact@v5`, and `actions/deploy-pages@v5`.
 
 Each cinema returns a `pricesStatus` value:
 

@@ -5,8 +5,22 @@ import { UpstreamError } from "./errors.js";
 
 let requestChain = Promise.resolve();
 let lastRequestStartedAt = 0;
+const RETRYABLE_STATUS_CODES = new Set([502, 503, 504]);
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+function retryDelay(attempt, baseDelayMs) {
+  return Math.min(30_000, baseDelayMs * (2 ** (attempt - 1)));
+}
+
+async function discardResponse(response) {
+  if (!response.body) return;
+  try {
+    await response.body.cancel();
+  } catch {
+    // The retry must not fail just because an upstream error body cannot be cancelled.
+  }
+}
 
 function safeElCinemaUrl(pathname) {
   const url = new URL(pathname, config.baseUrl);
@@ -30,28 +44,59 @@ async function queuedFetch(url, options = {}) {
     const waitFor = Math.max(0, config.minRequestIntervalMs - (Date.now() - lastRequestStartedAt));
     if (waitFor) await delay(waitFor);
     lastRequestStartedAt = Date.now();
-
-    let response;
-    try {
-      response = await fetch(url, {
-        redirect: "follow",
-        signal: AbortSignal.timeout(config.requestTimeoutMs),
-        ...options,
-      });
-    } catch (error) {
-      throw new UpstreamError("Could not connect to elCinema.", { cause: error.message });
-    }
-
-    if (!response.ok) {
-      throw new UpstreamError(`elCinema returned HTTP ${response.status}.`, {
-        upstreamStatus: response.status,
-      });
-    }
-    return response;
+    return requestWithRetry(url, options);
   });
 
   requestChain = run.catch(() => undefined);
   return run;
+}
+
+export async function requestWithRetry(url, options = {}, {
+  fetchFn = fetch,
+  maxAttempts = config.requestMaxAttempts,
+  baseDelayMs = config.requestRetryBaseMs,
+  timeoutMs = config.requestTimeoutMs,
+  sleep = delay,
+} = {}) {
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    let response;
+    try {
+      response = await fetchFn(url, {
+        redirect: "follow",
+        ...options,
+        signal: AbortSignal.timeout(timeoutMs),
+      });
+    } catch (error) {
+      if (attempt === maxAttempts) {
+        throw new UpstreamError("Could not connect to elCinema after automatic retries.", {
+          cause: error.message,
+          attempts: attempt,
+        });
+      }
+
+      const waitMs = retryDelay(attempt, baseDelayMs);
+      console.warn(`[elCinema] Connection failed. Retry ${attempt + 1}/${maxAttempts} in ${waitMs}ms.`);
+      await sleep(waitMs);
+      continue;
+    }
+
+    if (response.ok) return response;
+
+    const retryable = RETRYABLE_STATUS_CODES.has(response.status);
+    if (!retryable || attempt === maxAttempts) {
+      throw new UpstreamError(`elCinema returned HTTP ${response.status}.`, {
+        upstreamStatus: response.status,
+        attempts: attempt,
+      });
+    }
+
+    await discardResponse(response);
+    const waitMs = retryDelay(attempt, baseDelayMs);
+    console.warn(`[elCinema] HTTP ${response.status}. Retry ${attempt + 1}/${maxAttempts} in ${waitMs}ms.`);
+    await sleep(waitMs);
+  }
+
+  throw new UpstreamError("elCinema request failed after automatic retries.");
 }
 
 export async function getHtml(pathname, { ttlMs = config.cacheTtlMs } = {}) {

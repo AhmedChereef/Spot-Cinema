@@ -8,10 +8,12 @@ export const config = Object.freeze({
   baseUrl: "https://elcinema.com",
   cacheTtlMs: integer(process.env.CACHE_TTL_MS, 15 * 60 * 1000, { min: 60_000 }),
   requestTimeoutMs: integer(process.env.REQUEST_TIMEOUT_MS, 15_000, { min: 2_000, max: 60_000 }),
+  requestMaxAttempts: integer(process.env.REQUEST_MAX_ATTEMPTS, 5, { min: 1, max: 10 }),
+  requestRetryBaseMs: integer(process.env.REQUEST_RETRY_BASE_MS, 1_500, { min: 0, max: 30_000 }),
   minRequestIntervalMs: integer(process.env.MIN_REQUEST_INTERVAL_MS, 450, { min: 250, max: 5_000 }),
   maxPriceCinemas: integer(process.env.MAX_PRICE_CINEMAS, 100, { min: 1, max: 100 }),
   allowedOrigin: process.env.ALLOWED_ORIGIN || "*",
   userAgent:
     process.env.ELCINEMA_USER_AGENT ||
-    "SpotCinemaPrototype/0.6.0 (+set-ELCINEMA_USER_AGENT-with-contact-email)",
+    "SpotCinemaPrototype/0.6.1 (+set-ELCINEMA_USER_AGENT-with-contact-email)",
 });
