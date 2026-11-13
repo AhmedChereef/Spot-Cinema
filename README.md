@@ -1,4 +1,4 @@
-# spotCinema / elCinema Unofficial API — v0.6.1
+# spotCinema / elCinema Unofficial API — v0.6.2
 
 > Spot the right movie, time, place, and price.
 
@@ -21,7 +21,7 @@ Open <http://localhost:3000> to try the Arabic playground.
 For responsible requests, edit `.env` and replace the default user agent with a real contact email:
 
 ```env
-ELCINEMA_USER_AGENT=SpotCinemaPrototype/0.6.1 (+you@example.com)
+ELCINEMA_USER_AGENT=SpotCinemaPrototype/0.6.2 (+you@example.com)
 ```
 
 ## Build the fast daily snapshot
@@ -103,7 +103,7 @@ The **Use my location** button calculates distances inside the browser and filte
 
 The **Next showtime from now** button checks the current time in Cairo and searches every cached day for the selected movie. It respects the active city, area, or nearby-radius filter, then shows the cinema, ticket price, experience, distance, and the two next alternatives.
 
-The v0.6.0 mobile-first interface adds a searchable poster gallery, date chips, a clearer location card, a highlighted best-showing recommendation, and compact cinema cards while preserving every collected showtime and ticket price.
+The v0.6.0 mobile-first interface adds a searchable poster gallery, date chips, a clearer location card, a highlighted best-showing recommendation, and compact cinema cards while preserving every collected showtime and ticket price. Starting with v0.6.2, the governorate and area filters are built from the cinemas that actually show the selected movie, with the separately collected location list used only for Arabic labels. This keeps the filters available even when the general locations request is incomplete.
 
 Version 0.6.1 makes the daily snapshot resilient to temporary elCinema gateway outages and upgrades every workflow action to a current Node 24-based release: `actions/checkout@v7`, `actions/setup-node@v7`, `actions/configure-pages@v6`, `actions/upload-pages-artifact@v5`, and `actions/deploy-pages@v5`.
 

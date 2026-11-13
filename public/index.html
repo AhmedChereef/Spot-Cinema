@@ -318,6 +318,7 @@
 
     <script type="module">
       import { findUpcomingShowings } from "./time-utils.js";
+      import { localizedCinemaLocation, movieLocationOptions } from "./location-utils.js";
 
       const elements = {
         movieSearch: document.querySelector("#movie-search"),
@@ -345,6 +346,7 @@
       let selectedMovieId = null;
       let selectedDate = null;
       let userLocation = null;
+      let availableLocations = { cities: [], areasByCity: {} };
       const selectedAreaIds = new Set();
 
       const escapeHtml = (value) => String(value ?? "").replace(/[&<>\"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[char]);
@@ -446,6 +448,13 @@
         renderDateChips();
       }
 
+      function loadCities() {
+        availableLocations = movieLocationOptions(selectedMovie(), snapshot?.locations);
+        elements.city.innerHTML = `<option value="">كل المحافظات والمدن المتاحة</option>` + availableLocations.cities.map((item) => `<option value="${escapeHtml(item.id)}">${escapeHtml(item.name)}</option>`).join("");
+        elements.city.disabled = !availableLocations.cities.length;
+        loadAreas();
+      }
+
       function renderDateChips() {
         const dates = selectedMovie()?.availableDates || [];
         elements.dateRow.innerHTML = dates.length ? dates.map((value) => `<button class="btn date-chip${value === selectedDate ? " is-selected" : ""}" type="button" data-date="${value}" aria-pressed="${value === selectedDate}">${escapeHtml(dateLabel(value))}</button>`).join("") : `<span class="meta">مفيش أيام متاحة للفيلم ده حاليًا.</span>`;
@@ -453,9 +462,9 @@
       }
 
       function loadAreas() {
-        const areas = snapshot?.locations?.areasByCity?.[elements.city.value] || [];
+        const areas = availableLocations.areasByCity?.[elements.city.value] || [];
         selectedAreaIds.clear();
-        elements.areaMenu.innerHTML = areas.map((item) => `<label class="area-option"><input type="checkbox" value="${escapeHtml(item.id)}"><span>${escapeHtml(item.nameAr || item.nameEn)}</span></label>`).join("");
+        elements.areaMenu.innerHTML = areas.map((item) => `<label class="area-option"><input type="checkbox" value="${escapeHtml(item.id)}"><span>${escapeHtml(item.name)}</span></label>`).join("");
         elements.areaToggle.disabled = !elements.city.value || !areas.length;
         elements.areaMenu.hidden = true;
         updateAreaLabel();
@@ -505,7 +514,7 @@
             <span class="badge${nearbyMode ? " badge-blue" : ""}">${cinemas.length} سينما${nearbyMode ? ` · نطاق ${escapeHtml(radiusKm)} كم` : ""}</span>
           </div>
           ${cinemas.length ? `<div class="cinema-list">${cinemas.map((cinema) => {
-            const locationText = [cinema.location?.area?.name, cinema.location?.city?.name].filter(Boolean).join("، ") || "الموقع غير مصنف";
+            const locationText = localizedCinemaLocation(cinema, snapshot?.locations);
             return `<article class="cinema-card">
               <div class="cinema-head">
                 <div class="cinema-copy"><h3>${escapeHtml(cinema.theater || cinema.name)}</h3><span class="cinema-place">⌖ ${escapeHtml(locationText)}</span>${cinema.address ? `<span class="cinema-address">${escapeHtml(cinema.address)}</span>` : ""}</div>
@@ -535,7 +544,7 @@
         const nearest = showings[0];
         const cinema = nearest.cinema;
         const showtime = nearest.showtime;
-        const locationText = [cinema.location?.area?.name, cinema.location?.city?.name].filter(Boolean).join("، ") || "الموقع غير مصنف";
+        const locationText = localizedCinemaLocation(cinema, snapshot?.locations);
         const alternatives = showings.slice(1);
         elements.results.innerHTML = `
           <div class="results-toolbar">${movieHeading(movie, "أقرب حفلة بعد الوقت الحالي")}<span class="badge">${showings.length} اختيارات قريبة</span></div>
@@ -552,7 +561,7 @@
             </div>
           </article>
           ${alternatives.length ? `<div><div class="section-heading"><div class="heading-copy"><h3>اختيارات تانية بعدها</h3><span class="meta">مرتبة حسب أقرب ميعاد متاح</span></div></div><div class="alternatives">${alternatives.map((showing) => {
-            const alternativeLocation = [showing.cinema.location?.area?.name, showing.cinema.location?.city?.name].filter(Boolean).join("، ");
+            const alternativeLocation = localizedCinemaLocation(showing.cinema, snapshot?.locations);
             return `<article class="alternative"><div class="alternative-head"><strong>${escapeHtml(showing.cinema.theater || showing.cinema.name)}</strong><span class="alternative-time">${escapeHtml(formatShowingTime(showing.startsAt))}</span></div><span class="meta">${escapeHtml(alternativeLocation)}${showing.cinema.distanceKm != null ? ` · ${escapeHtml(formatDistance(showing.cinema.distanceKm))}` : ""}</span><span>${priceMarkup(showing.showtime)}${showing.showtime.experience ? ` · <span class="meta">${escapeHtml(showing.showtime.experience)}</span>` : ""}</span></article>`;
           }).join("")}</div></div>` : ""}
           <button class="btn" type="button" data-show-date="${escapeHtml(nearest.day)}">اعرض كل مواعيد ${escapeHtml(dateLabel(nearest.day))}</button>`;
@@ -604,16 +613,14 @@
           snapshot = await response.json();
           if (!Array.isArray(snapshot.movies) || !snapshot.generatedAt) throw new Error("ملف البيانات غير صالح.");
           selectedMovieId = snapshot.movies[0]?.id || null;
-          elements.city.innerHTML = `<option value="">كل المحافظات والمدن</option>` + snapshot.locations.cities.map((item) => `<option value="${escapeHtml(item.id)}">${escapeHtml(item.nameAr || item.nameEn)}</option>`).join("");
           elements.movieSearch.disabled = false;
-          elements.city.disabled = false;
           elements.nearest.disabled = !selectedMovieId;
           elements.locate.disabled = false;
           elements.freshness.textContent = `آخر تحديث: ${formatUpdatedAt(snapshot.generatedAt)}`;
           elements.stats.textContent = `${snapshot.stats.movies} فيلم · ${snapshot.stats.cinemas} سينما · ${snapshot.stats.sessions} ميعاد`;
           renderMovieCards();
           loadDates();
-          loadAreas();
+          loadCities();
           elements.progress.textContent = "البيانات جاهزة — اختار فيلم أو اضغط أقرب ميعاد.";
           if (selectedMovieId) renderNearestShowing();
         } catch (error) {
@@ -632,6 +639,7 @@
         selectedMovieId = card.dataset.movieId;
         renderMovieCards();
         loadDates();
+        loadCities();
         renderNearestShowing();
       });
       elements.dateRow.addEventListener("click", (event) => {

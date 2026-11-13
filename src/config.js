@@ -15,5 +15,5 @@ export const config = Object.freeze({
   allowedOrigin: process.env.ALLOWED_ORIGIN || "*",
   userAgent:
     process.env.ELCINEMA_USER_AGENT ||
-    "SpotCinemaPrototype/0.6.1 (+set-ELCINEMA_USER_AGENT-with-contact-email)",
+    "SpotCinemaPrototype/0.6.2 (+set-ELCINEMA_USER_AGENT-with-contact-email)",
 });
